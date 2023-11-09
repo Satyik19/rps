@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Rock, Paper, Scissors Multiplayer</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" integrity="sha512-z3gLpd7yknf1YoNbCzqRKc4qyor8gaKU1qmn+CShxbuBusANI9QpRohGBreCFkKxLhei6S9CQXFEbbKuqLg0DA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.2.0/socket.io.js"></script>
+    <link rel="stylesheet" href="../static/style.css">
+</head>
+<body>
+    <div id="game">
+        <div class="room-actions">
+            <div class="join-room"><input id="roomID" type="text" placeholder="room id" /> <button id="join-room" type="submit"><span>join</span> <i class="fa-solid fa-people-group"></i></button></div>
+            <button id="create-room"><span>create</span> <i class="fa-solid fa-people-group"></i></button>
+
+        </div>
+        <h1 class="heading">Rock, Paper, Scissors Multiplayer</h1>
+        <div id="game-container">
+
+        </div>
+        <div id="room-info"></div>
+    </div>
+
+
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
+
+    <script>
+        let gameSettings = {
+            roomId: "",
+            options: {},
+            times: 0,
+            playCount: 0,
+            playerIndex: 0
+        }
+        const socket= io.connect('http://127.0.0.1:5000');
+        // const socket2 = io.connect()
+
+        // Listen for game messages
+        socket.on('message', function(data) {
+            console.log(data)
+            $('#game-container').empty();
+            if (data.type == "gameplay") {
+                $('#game-container').append(`<i onclick="selectOption(event)" data-index=${gameSettings.playCount} data-value="rock" class="fa-regular fa-hand-back-fist"></i><i onclick="selectOption(event)" data-index=${gameSettings.playCount} data-value="paper" class="fa-regular fa-hand"></i><i onclick="selectOption(event)" data-index=${gameSettings.playCount} data-value="scissors" class="fa-regular fa-hand-scissors"></i>`);
+                gameSettings.times = data.config.times;
+                console.log(data.config.ttl)
+            } else if (data.type == "message") {
+                console.log( $('#game-container'))
+                $("#game-container").append('<p class="game-message">' + data.message + '</p>')
+            }
+
+        });
+
+        // Handle form submission
+        $('#choicesForm').submit(function(e) {
+            e.preventDefault();
+            const choice1 = $('input[name=choice1]:checked').val();
+        });
+
+        $(".fa-regular").on("click", (event) => {
+            $(event.target).addClass("chosen");
+        })
+
+        // Handle game results
+        socket.on('result', function(data) {
+            $('#result').text(data.message);
+        });
+
+        socket.on("join_acc", (roomId) => {
+            socket.emit("join", {username: "guest", room: roomId})
+            $("#room-info").text("room ID: " + roomId);
+            gameSettings.roomId = roomId;
+            console.log("joining")
+        })
+
+        const joinRoom = () => {
+            gameSettings.playerIndex = 0;
+            socket.emit("join_req");
+        }
+
+        const joinRoomByID = () => {
+
+            gameSettings.playerIndex = 1;
+            const roomId = $("#roomID").val();
+            console.log(roomId)
+            $("#room-info").text("room ID: " + roomId);
+            gameSettings.roomId = roomId;
+            socket.emit("join", {username: "guest 2", room: roomId});
+        }
+
+        const selectOption = (event) => {
+            $(event.target).addClass("chosen");
+            console.log($(event.target).attr("data-index"));
+            console.log($(event.target).attr("data-value"));
+            gameSettings.options = {
+                ...gameSettings.options,
+                [$(event.target).attr("data-index")]: $(event.target).attr("data-value")
+            }
+            if (gameSettings.times > 1) {
+                gameSettings.times -= 1;
+                gameSettings.playCount += 1;
+                $("#game-container").empty();
+                $('#game-container').append(`<i onclick="selectOption(event)" data-index=${gameSettings.playCount} data-value="rock" class="fa-regular fa-hand-back-fist"></i><i onclick="selectOption(event)" data-index=${gameSettings.playCount} data-value="paper" class="fa-regular fa-hand"></i><i onclick="selectOption(event)" data-index=${gameSettings.playCount} data-value="scissors" class="fa-regular fa-hand-scissors"></i>`);
+            } else {
+                $("#game-container").empty();
+                $("#game-container").append('<p class="game-message">How did you do?</p>')
+                sendOptions();
+            }
+            console.log(gameSettings);
+        }
+
+        const sendOptions = () => {
+            socket.emit("send_options", {playerIndex: gameSettings.playerIndex, roomId: gameSettings.roomId, options: gameSettings.options })
+        }
+
+
+
+        $("#create-room").on("click", joinRoom)
+        $("#join-room").on("click", joinRoomByID)
+    </script>
+</body>
+</html>
