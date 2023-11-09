@@ -125,5 +125,4 @@ def determine_winner(player1_choice, player2_choice):
     else:
          return "Lose"
 
-if __name__ == '__main__':
-    socketio.run(app, debug=True)
+
